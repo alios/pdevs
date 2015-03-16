@@ -17,12 +17,13 @@ data CoupledModelDef x y where
   Binding  :: Z x y i j      -> CoupledModelDef x y
   Instance :: ModelRef tx ty -> CoupledModelDef x y
 
+
 type CoupledModelM x y a = MonadWriter (Vector (CoupledModelDef x y)) m => m a
 type CoupledModel x y = CoupledModelM x y ()
 
 data ModelRef x y where
   AtomicModelRef :: String -> Model x s y -> s -> ModelRef x y
-  CoupledModelRef :: String -> CoupledModel tx ty -> ModelRef x y
+  CoupledModelRef :: String -> CoupledModel tx ty -> ModelRef tx ty
 
 data Z x y i j where
   ZInput    :: ModelRef tx ty -> (x -> tx) -> Z x y x tx
