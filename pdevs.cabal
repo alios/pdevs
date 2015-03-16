@@ -18,8 +18,9 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Control.Devs.PDEVS,
                        Control.Devs.Model,
-                       Control.Devs.CoupledModel
-  -- other-modules:       
+                       Control.Devs.CoupledModel,
+                       Control.Devs.CoupledModel.Types
+--  other-modules:       
   other-extensions:    TemplateHaskell, Trustworthy
   build-depends:       base >=4.7 && <4.8, lens >=4.7, vector >= 0.10, mtl >= 2.2
   hs-source-dirs:      src
