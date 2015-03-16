@@ -16,25 +16,30 @@ modelInstance :: (HasModel t tx s ty) => String -> t -> s ->
                  CoupledModelM x y (ModelRef tx ty)
 modelInstance n m s0 = do
   let ref = AtomicModelRef n (m ^. model) s0
-  tell . mappend mempty . Instance $ ref
+  tell (return $ Instance ref)
   return ref
 
 coupledInstance :: String -> CoupledModel x y ->
                    CoupledModelM x y (ModelRef tx ty)
 coupledInstance n m = do
   let ref = CoupledModelRef n m
-  tell . mappend mempty . Instance $ ref
+  tell (return $ Instance ref)
   return ref
 
 
-bindInput :: ModelRef tx ty -> (x -> tx) ->   CoupledModel x y
-bindInput ref z  = tell . mappend mempty . Binding $ ZInput z ref
+bindInput  :: ModelRef tx ty -> (x -> tx) ->   CoupledModel x y
+bindInput r = tellBinding . ZInput r
 
 bindOutput :: ModelRef tx ty -> (ty -> y) ->   CoupledModel x y
-bindOutput ref z = tell . mappend mempty . Binding $ ZOutput z ref
+bindOutput r = tellBinding . ZOutput r
 
 influences :: ModelRef ax ay -> (ay -> bx) ->  ModelRef bx by -> CoupledModel x y
-influences a z b = tell . mappend mempty . Binding $ ZInternal z a b
+influences a z = tellBinding . ZInternal a z
+
+
+tellBinding :: Z x y i j -> CoupledModel x y
+tellBinding a = tell . return $ Binding a
+
 
 {-
   coupledModel :: CoupledModel x y ()

@@ -17,7 +17,7 @@ data CoupledModelDef x y where
   Binding  :: Z x y i j      -> CoupledModelDef x y
   Instance :: ModelRef tx ty -> CoupledModelDef x y
 
-type CoupledModelM x y a = MonadWriter (CoupledModelDef x y) m => m a
+type CoupledModelM x y a = MonadWriter (Vector (CoupledModelDef x y)) m => m a
 type CoupledModel x y = CoupledModelM x y ()
 
 data ModelRef x y where
@@ -25,9 +25,9 @@ data ModelRef x y where
   CoupledModelRef :: String -> CoupledModel tx ty -> ModelRef x y
 
 data Z x y i j where
-  ZInput    :: (x -> tx) ->  ModelRef tx ty -> Z x y x tx
-  ZInternal :: (ay -> bx) -> ModelRef ax ay -> ModelRef bx by -> Z x y ay bx
-  ZOutput   :: (ty -> y) ->  ModelRef tx ty -> Z x y ty y
+  ZInput    :: ModelRef tx ty -> (x -> tx) -> Z x y x tx
+  ZInternal :: ModelRef ax ay -> (ay -> bx) -> ModelRef bx by -> Z x y ay bx
+  ZOutput   :: ModelRef tx ty -> (ty -> y) -> Z x y ty y
 
 
 data ComponentInfluencer x y tx where
