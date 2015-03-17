@@ -36,10 +36,16 @@ makePrisms ''DeltaCon
 
 
 newtype Lambda s y = Lambda (s -> Vector y) deriving (Typeable, Generic)
+
 instance Functor (Lambda s) where
   fmap f (Lambda l) = Lambda $ fmap f . l
+
+instance Profunctor Lambda where
+  dimap fs fy (Lambda l) = Lambda $ fmap fy . l . fs
+
 instance NFData (Lambda s y)
 makePrisms ''Lambda
+
 
 
 newtype Ta s = Ta (s -> T) deriving (Typeable, Generic)

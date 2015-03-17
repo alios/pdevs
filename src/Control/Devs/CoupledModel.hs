@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE Trustworthy           #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 -- | construct coupled models
 module Control.Devs.CoupledModel
@@ -21,7 +23,7 @@ import           Control.Devs.CoupledModel.Types
 import           Control.Devs.Model
 import           Control.Lens
 import           Control.Monad.Writer
-
+import qualified Data.Vector                     as V
 -- | make an instance of an atomic model implementing 'HasModel',
 --   given a /name/, the model and a initial state.
 --   a instanciated model will be called component and is reffered to by
@@ -66,14 +68,28 @@ tellBinding :: Z x y i j -> CoupledModel x y
 tellBinding a = tell . return $ Binding a
 
 
-{-
-  coupledModel :: CoupledModel x y ()
-  coupledModel = do
-    a <- modelInstance "A" modelA
-    bindInput a
-    b <- coupledModel "B" cmodelB
-    a `influences` b
-    c <- modelInstance "C" modelC
-    b `influences` c
-    bindOutput c
--}
+data A = A
+instance HasModel A Int () Char where
+
+data B = B
+instance HasModel B String Double () where
+
+
+foo :: CoupledModel Int ()
+foo = do
+  a <- modelInstance "modelA" A ()
+  bindInput a id
+  b <- modelInstance "modelB" B 0
+  influences a show b
+  bindOutput b id
+
+bar :: CoupledModel Int Char
+bar = do
+  a <- modelInstance "modelA" A ()
+  b <- coupledInstance "foo" foo
+  bindInput b id
+  influences b (\_ -> 0) a
+  bindOutput a id
+
+
+f = snd $ runWriter foo

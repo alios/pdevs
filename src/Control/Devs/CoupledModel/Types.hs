@@ -14,7 +14,6 @@ import           Control.DeepSeq
 import           Control.Devs.Model
 import           Control.Lens
 import           Control.Monad.Writer
--- import           Data.Binary
 import           Data.Typeable        (Typeable)
 import           Data.Vector          (Vector)
 import           GHC.Generics
@@ -25,6 +24,10 @@ data CoupledModelDef x y where
   deriving (Typeable)
 instance NFData (CoupledModelDef x y)
 
+instance Show (CoupledModelDef x y) where
+  show (Binding z) = "Binding " ++ show z
+  show (Instance r) = "Instance " ++ show r
+
 type CoupledModelM x y a = MonadWriter (Vector (CoupledModelDef x y)) m => m a
 type CoupledModel x y = CoupledModelM x y ()
 
@@ -34,6 +37,10 @@ data ModelRef x y where
   deriving (Typeable)
 instance NFData (ModelRef x y)
 
+instance Show (ModelRef x y) where
+  show (AtomicModelRef s _ _) = s
+  show (CoupledModelRef s _) = s
+
 data Z x y i j where
   ZInput    :: ModelRef tx ty -> (x -> tx) -> Z x y x tx
   ZInternal :: ModelRef ax ay -> (ay -> bx) -> ModelRef bx by -> Z x y ay bx
@@ -41,6 +48,10 @@ data Z x y i j where
   deriving (Typeable)
 instance NFData (Z x y i j)
 
+instance Show (Z x y i j) where
+  show (ZInput r _) = "ZInput " ++ show r
+  show (ZOutput r _) = "ZOutput " ++ show r
+  show (ZInternal a _ b) = "ZInternal " ++ show a ++ " " ++ show b
 
 data ComponentInfluencer x y tx where
   ComponentInfluencer :: Either (Z x y x tx) (Z x y a tx) ->
@@ -65,8 +76,6 @@ newtype CoupledModelSpec x y =
   CoupledModelSpec (String, Vector (Component x y), Vector (SelfInfluencer x y))
   deriving (Typeable, Generic)
 instance NFData (CoupledModelSpec x y)
-
---instance Binary (CoupledModelSpec x y)
 
 makePrisms ''CoupledModelSpec
 
