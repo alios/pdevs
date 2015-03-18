@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts   #-}
 {-
 Copyright (c) 2015, Markus Barenhoff <alios@alios.org>
 All rights reserved.
@@ -26,28 +27,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
 
-{-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE DeriveDataTypeable     #-}
-{-# LANGUAGE DeriveGeneric          #-}
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE RankNTypes             #-}
-{-# LANGUAGE TemplateHaskell        #-}
-{-# LANGUAGE Trustworthy            #-}
-{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE Trustworthy        #-}
+{-# LANGUAGE TypeFamilies       #-}
 
 -- | The type class for /Atomic Models/.
 module Control.Devs.AtomicModel where
 
+import           Data.Binary
+import           Data.Typeable
+import           Data.Vector   (Vector)
 
-import           Data.Vector (Vector)
 
 -- | The 'Time' type 'T'
 type T = Double
 
 -- | The /Parallel DEVS (P-DEVS)/ Model [PDEVS94].
-class AtomicModel m where
+class (Typeable m, Typeable (X m), Binary (X m),
+       Typeable (Y m), Binary (Y m),
+       Binary (S m)) => AtomicModel m  where
   -- | the input type
   type X m :: *
   -- | the output type
@@ -69,6 +70,8 @@ class AtomicModel m where
 
   -- | the time-advance function
   ta       :: S m -> T
+
+deriving instance Typeable S
 
 
 -- $references

@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-
 Copyright (c) 2015, Markus Barenhoff <alios@alios.org>
 All rights reserved.
@@ -32,9 +34,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 {-# LANGUAGE ImpredicativeTypes    #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE Trustworthy           #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
+
 
 -- | construct coupled models
 module Control.Devs.CoupledModel
@@ -51,9 +55,10 @@ module Control.Devs.CoupledModel
 
 import           Control.Devs.AtomicModel
 import           Control.Devs.CoupledModel.Types
-
 import           Control.Monad.Writer
-
+import           Data.Binary
+import           Data.Typeable
+import           GHC.Generics                    (Generic)
 
 -- | make an instance of an atomic model implementing 'HasModel',
 --   given a /name/, the model and a initial state.
@@ -95,37 +100,29 @@ influences :: ModelRef ax ay -> (ay -> bx) ->  ModelRef bx by -> CoupledModel x 
 influences a z = tellBinding . ZInternal a z
 
 
-
-tellBinding :: Z x y i j -> CoupledModel x y
-tellBinding a = tell . return $ Binding a
-
---   CoupledModelSpec (String, Vector (Component x y), Vector (SelfInfluencer x y))
-
-emptyCoupledModel :: String -> CoupledModelSpec x y
-emptyCoupledModel n = CoupledModelSpec n mempty mempty
-
-newComponent :: ModelRef tx ty -> Component x y tx ty
-newComponent r =  Component r mempty
-
 newSelfInfluencer :: Z x y ty y -> SelfInfluencer x y
 newSelfInfluencer z = SelfInfluencer z
 
 
 
+data A deriving (Typeable, Generic)
 
-data A
 instance AtomicModel A where
   type X A = String
   type Y A = Int
   data S A = StateA
 
-data B
+deriving instance Generic (S A)
+instance Binary (S A)
+
+data B deriving (Typeable, Generic)
 instance AtomicModel B where
   type X B = Int
   type Y B = Double
   data S B = StateB
 
-
+deriving instance Generic (S B)
+instance Binary (S B)
 
 testC1 :: CoupledModel String Double
 testC1 = do

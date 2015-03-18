@@ -38,7 +38,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 {-# LANGUAGE Trustworthy           #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module Control.Devs.CoupledModel.Types where
+module Control.Devs.CoupledModel.Types
+  ( -- * the writer monad
+    CoupledModel, CoupledModelM, CoupledModelDef (..),
+    -- * coupled model spec
+    CoupledModelSpec, coupledName, coupledComps, coupledSelfInfs,
+    emptyCoupledModel,
+    ModelRef (..),
+    -- ** self influencers
+    SelfInfluencer (..),
+    -- ** component
+    Component, newComponent, compModelRef, compInfluencers,
+    -- ** component influencer
+    ComponentInfluencer (..),
+    -- ** bindings
+    Z (..), tellBinding
+  ) where
 
 import           Control.DeepSeq
 import           Control.Devs.AtomicModel
@@ -88,6 +103,9 @@ data Z x y i j where
   ZOutput   :: ModelRef tx ty -> (ty -> y) -> Z x y ty y
   deriving (Typeable)
 
+tellBinding :: Z x y i j -> CoupledModel x y
+tellBinding a = tell . return $ Binding a
+
 data ComponentInfluencer x y tx where
   ComponentInfluencer :: Either (Z x y x tx) (Z x y a tx) ->
                          ComponentInfluencer x y tx
@@ -105,6 +123,8 @@ data Component x y tx ty = Component {
 
 makeLenses ''Component
 
+newComponent :: ModelRef tx ty -> Component x y tx ty
+newComponent r =  Component r mempty
 
 data CoupledModelSpec x y =
   CoupledModelSpec {
@@ -113,9 +133,10 @@ data CoupledModelSpec x y =
     _coupledSelfInfs :: Vector (SelfInfluencer x y)
     } deriving (Typeable)
 
-
-
 makeLenses ''CoupledModelSpec
+
+emptyCoupledModel :: String -> CoupledModelSpec x y
+emptyCoupledModel n = CoupledModelSpec n mempty mempty
 
 instance NFData (CoupledModelSpec x y)
 instance NFData (Component x y tx ty)
@@ -153,3 +174,4 @@ instance Show (Z x y i j) where
   show (ZInput r _) = "ZInput " ++ show r
   show (ZOutput r _) = "ZOutput " ++ show r
   show (ZInternal a _ b) = "ZInternal " ++ show a ++ " " ++ show b
+
