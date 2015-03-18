@@ -95,27 +95,28 @@ instance AtomicModel A where
 
 data B = B
 instance AtomicModel B where
-  type X B = ()
+  type X B = Int
   type Y B = Double
   data S B = StateB
 
 
-{-
-foo :: CoupledModel Int ()
-foo = do
-  a <- modelInstance "modelA" A ()
+
+testC1 :: CoupledModel String Double
+testC1 = do
+  a <- modelInstance "A" A StateA
   bindInput a id
-  b <- modelInstance "modelB" B (0 :: Double)
-  influences a show b
+  b <- modelInstance "B" B StateB
+  influences a id b
   bindOutput b id
 
-bar :: CoupledModel Int Char
-bar = do
-  a <- modelInstance "modelA" A ()
-  b <- coupledInstance "foo" foo
-  bindInput b id
-  influences b (\_ -> 0) a
-  bindOutput a id
--}
 
---f = snd $ runWriter foo
+testC2 :: CoupledModel String Int
+testC2 = do
+  a <- modelInstance "A" A StateA
+  b <- coupledInstance "testC1" testC1
+  bindInput b id
+  influences b show a
+  bindOutput a id
+
+c1 = snd $ runWriter testC1
+c2 = snd $ runWriter testC2
