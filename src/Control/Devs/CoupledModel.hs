@@ -33,10 +33,10 @@ import qualified Data.Vector                     as V
 --   given a /name/, the model and a initial state.
 --   a instanciated model will be called component and is reffered to by
 --   a 'ModelRef'.
-modelInstance :: (AtomicModel t) => String -> t -> S t ->
+modelInstance :: (AtomicModel t) => String -> S t ->
                  CoupledModelM x y (ModelRef (X t) (Y t))
-modelInstance n m s0 = do
-  let ref = AtomicModelRef n m s0
+modelInstance n s0 = do
+  let ref = AtomicModelRef n s0
   tell (return $ Instance ref)
   return ref
 
@@ -87,13 +87,13 @@ newSelfInfluencer z = SelfInfluencer z
 
 
 
-data A = A
+data A
 instance AtomicModel A where
   type X A = String
   type Y A = Int
   data S A = StateA
 
-data B = B
+data B
 instance AtomicModel B where
   type X B = Int
   type Y B = Double
@@ -103,16 +103,16 @@ instance AtomicModel B where
 
 testC1 :: CoupledModel String Double
 testC1 = do
-  a <- modelInstance "A" A StateA
+  a <- modelInstance "A" StateA
   bindInput a id
-  b <- modelInstance "B" B StateB
+  b <- modelInstance "B" StateB
   influences a id b
   bindOutput b id
 
 
 testC2 :: CoupledModel String Int
 testC2 = do
-  a <- modelInstance "A" A StateA
+  a <- modelInstance "A" StateA
   b <- coupledInstance "testC1" testC1
   bindInput b id
   influences b show a

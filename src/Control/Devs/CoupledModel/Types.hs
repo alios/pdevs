@@ -30,7 +30,7 @@ type CoupledModelM x y a = MonadWriter (Vector (CoupledModelDef x y)) m => m a
 type CoupledModel x y = CoupledModelM x y ()
 
 data ModelRef x y where
-  AtomicModelRef :: (AtomicModel t) => String -> t -> s -> ModelRef (X t) (Y t)
+  AtomicModelRef :: (AtomicModel t) => String  -> S t -> ModelRef (X t) (Y t)
   CoupledModelRef :: String -> CoupledModel tx ty -> ModelRef tx ty
   deriving (Typeable)
 
@@ -102,9 +102,9 @@ instance Show (CoupledModelDef x y) where
 
 modelRefName :: Lens' (ModelRef x y) String
 modelRefName = lens g s
-  where g (AtomicModelRef n _ _) = n
+  where g (AtomicModelRef n _) = n
         g (CoupledModelRef n _) = n
-        s (AtomicModelRef _ m s0) n = AtomicModelRef n m s0
+        s (AtomicModelRef _ s0) n = AtomicModelRef n s0
         s (CoupledModelRef _ m) n = CoupledModelRef n m
 
 
