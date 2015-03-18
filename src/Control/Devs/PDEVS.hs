@@ -1,7 +1,7 @@
 {-# LANGUAGE Trustworthy #-}
 
 module Control.Devs.PDEVS
- ( Model, HasModel(..)
+ ( AtomicModel (..)
  , module Control.Devs.CoupledModel
  ) where
 

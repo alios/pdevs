@@ -1,15 +1,17 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE ImpredicativeTypes    #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE Trustworthy           #-}
+{-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
 -- | construct coupled models
 module Control.Devs.CoupledModel
   ( -- * types HasModel (..)
-    HasModel (..), ModelRef,
+    AtomicModel (..), ModelRef,
     -- * instance models
     -- ** atomic models
     modelInstance,
@@ -23,15 +25,18 @@ import           Control.Devs.CoupledModel.Types
 import           Control.Devs.Model
 import           Control.Lens
 import           Control.Monad.Writer
+import           Data.Typeable
 import qualified Data.Vector                     as V
+
+
 -- | make an instance of an atomic model implementing 'HasModel',
 --   given a /name/, the model and a initial state.
 --   a instanciated model will be called component and is reffered to by
 --   a 'ModelRef'.
-modelInstance :: (HasModel t tx s ty) => String -> t -> s ->
-                 CoupledModelM x y (ModelRef tx ty)
+modelInstance :: (AtomicModel t) => String -> t -> S t ->
+                 CoupledModelM x y (ModelRef (X t) (Y t))
 modelInstance n m s0 = do
-  let ref = AtomicModelRef n (m ^. model) s0
+  let ref = AtomicModelRef n m s0
   tell (return $ Instance ref)
   return ref
 
@@ -64,22 +69,43 @@ influences :: ModelRef ax ay -> (ay -> bx) ->  ModelRef bx by -> CoupledModel x 
 influences a z = tellBinding . ZInternal a z
 
 
+
 tellBinding :: Z x y i j -> CoupledModel x y
 tellBinding a = tell . return $ Binding a
 
+--   CoupledModelSpec (String, Vector (Component x y), Vector (SelfInfluencer x y))
+
+emptyCoupledModel :: String -> CoupledModelSpec x y
+emptyCoupledModel n = CoupledModelSpec n mempty mempty
+
+newComponent :: ModelRef tx ty -> Component x y tx ty
+newComponent r =  Component r mempty
+
+newSelfInfluencer :: Z x y ty y -> SelfInfluencer x y
+newSelfInfluencer z = SelfInfluencer z
+
+
+
 
 data A = A
-instance HasModel A Int () Char where
+instance AtomicModel A where
+  type X A = String
+  type Y A = Int
+  data S A = StateA
 
 data B = B
-instance HasModel B String Double () where
+instance AtomicModel B where
+  type X B = ()
+  type Y B = Double
+  data S B = StateB
 
 
+{-
 foo :: CoupledModel Int ()
 foo = do
   a <- modelInstance "modelA" A ()
   bindInput a id
-  b <- modelInstance "modelB" B 0
+  b <- modelInstance "modelB" B (0 :: Double)
   influences a show b
   bindOutput b id
 
@@ -90,6 +116,6 @@ bar = do
   bindInput b id
   influences b (\_ -> 0) a
   bindOutput a id
+-}
 
-
-f = snd $ runWriter foo
+--f = snd $ runWriter foo
