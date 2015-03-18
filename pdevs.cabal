@@ -3,13 +3,17 @@
 
 name:                pdevs
 version:             0.1.0.0
--- synopsis:            
--- description:         
+synopsis:            implementation of a Discrete Event System Sepcification (DEVS)
+description:
+        The /Discrete Event System Sepcification (DEVS)/ formalism defines
+        discrete event simulation models in a hierachical, modular manner.
+        This implementation is based on the paper
+        /Parallel DEVS: a parallel, hierarchical, modular modeling formalism/ [PDEVS94].
 license:             BSD3
 license-file:        LICENSE
 author:              Markus Barenhoff
 maintainer:          mbarenh@alios.org
--- copyright:           
+copyright:           (c) 2015 Markus Barenhoff
 category:            Control
 build-type:          Simple
 -- extra-source-files:  
@@ -17,7 +21,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Control.Devs.PDEVS,
-                       Control.Devs.Model,
+                       Control.Devs.AtomicModel,
                        Control.Devs.CoupledModel,
                        Control.Devs.CoupledModel.Types
 --  other-modules:       

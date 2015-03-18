@@ -26,20 +26,49 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
 
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE DeriveDataTypeable     #-}
+{-# LANGUAGE DeriveGeneric          #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE RankNTypes             #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE Trustworthy            #-}
+{-# LANGUAGE TypeFamilies           #-}
 
--- | The /Discrete Event System Sepcification (DEVS)/ formalism defines
---   discrete event simulation models in a hierachical, modular manner.
---   This implementation is based on the paper /Parallel DEVS: a parallel, hierarchical, modular modeling formalism/ [PDEVS94].
-module Control.Devs.PDEVS
- ( -- * the atomic model
-   AtomicModel (..),
-   -- * the coupled model
-   module Control.Devs.CoupledModel
- ) where
+-- | The type class for /Atomic Models/.
+module Control.Devs.AtomicModel where
 
-import           Control.Devs.AtomicModel
-import           Control.Devs.CoupledModel
+
+import           Data.Vector (Vector)
+
+-- | The 'Time' type 'T'
+type T = Double
+
+-- | The /Parallel DEVS (P-DEVS)/ Model [PDEVS94].
+class AtomicModel m where
+  -- | the input type
+  type X m :: *
+  -- | the output type
+  type Y m :: *
+  -- | the state type
+  data S m :: *
+
+  -- | the internal transition function
+  deltaInt :: S m -> S m
+
+  -- | the external transition function
+  deltaExt :: (S m, T) -> Vector (X m) -> S m
+
+  -- | the confluent transition function
+  deltaCon :: S m -> Vector (X m) -> S m
+
+  -- | the output function
+  lambda   :: S m -> Y m
+
+  -- | the time-advance function
+  ta       :: S m -> T
 
 
 -- $references
