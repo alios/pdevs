@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-
 Copyright (c) 2015, Markus Barenhoff <alios@alios.org>
 All rights reserved.
@@ -28,118 +26,74 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
 
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE ImpredicativeTypes    #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE Trustworthy           #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
-
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE Safe       #-}
 
 -- | construct coupled models
 module Control.Devs.CoupledModel
-  ( -- * types
-    ModelRef,
-    -- * define model instances
-    -- ** atomic models
-    modelInstance,
-    -- ** coupled models
-    coupledInstance,
-    -- * bind models
-    bindInput, bindOutput, influences
+  ( -- * ModelReference
+    ModelRef(..),
+    -- * CoupledModel
+    CoupledModel(..),
+    -- ** defition of a CoupledModel
+    CoupledModelMonad,
+    newInstance, bindInput, bindOutput, bind,
+    -- ** evaluate a CoupledModel
+    CoupledAction(..),
+    evalCoupledModel
   ) where
 
-import           Control.Devs.AtomicModel
 import           Control.Devs.CoupledModel.Types
-import           Control.Monad.Writer
-import           Data.Binary
-import           Data.Typeable
-import           GHC.Generics                    (Generic)
+import           Control.Monad.RWS
 
--- | make an instance of an atomic model implementing 'HasModel',
---   given a /name/, the model and a initial state.
---   a instanciated model will be called component and is reffered to by
---   a 'ModelRef'.
-modelInstance :: (AtomicModel t) => String -> S t ->
-                 CoupledModelM x y (ModelRef (X t) (Y t))
-modelInstance n s0 = do
-  let ref = AtomicModelRef n s0
-  tell (return $ Instance ref)
-  return ref
+newInstance :: ModelRef mt t tx ty ->
+               CoupledModelMonad x y m (ModelInstance x y mt t tx ty)
+newInstance r = do
+  ic <- nextInstanceCount
+  let i = Instance ic r
+  tell [CoupledActionInstance i]
+  return i
 
--- | make an instance of another coupled model, given a /name/, the model and
---   an initial state.
---   a instanciated model will be called component and is reffered to by
---   a 'ModelRef'.
-coupledInstance :: String -> CoupledModel tx ty ->
-                   CoupledModelM x y (ModelRef tx ty)
-coupledInstance n m = do
-  let ref = CoupledModelRef n m
-  tell (return $ Instance ref)
-  return ref
+bindInput ::
+  ModelInstance x y ma a ax ay -> (x -> ax) -> CoupledModelMonad x y m ()
+bindInput i z = do
+  bc <- nextBindingCount
+  tell [CoupledActionBinding $ InputBinding bc i z]
 
--- | bind the input of the coupled model itself to a given component and
---   a mapping function from the coupled models input to the
---   components input.
-bindInput  :: ModelRef tx ty -> (x -> tx) ->   CoupledModel x y
-bindInput r = tellBinding . ZInput r
+bindOutput ::
+  ModelInstance x y ma a ax ay -> (x -> ax) -> CoupledModelMonad x y m ()
+bindOutput i z = do
+  bc <- nextBindingCount
+  tell [CoupledActionBinding $ InputBinding bc i z]
 
--- | bind the output of a component to the output of the coupled model itself,
---   given the component and a mapping function from the components
---   output to the output of the model itself
-bindOutput :: ModelRef tx ty -> (ty -> y) ->   CoupledModel x y
-bindOutput r = tellBinding . ZOutput r
+bind ::
+  ModelInstance x y ma a ax ay ->
+  (ay -> bx) ->
+  ModelInstance x y mb b bx by ->
+  CoupledModelMonad x y m ()
+bind a z b = do
+  bc <- nextBindingCount
+  tell [CoupledActionBinding $ InternalBinding bc a z b]
 
--- | bind two components using a mapping function from component /a/ output
---   to component /b/ input.
-influences :: ModelRef ax ay -> (ay -> bx) ->  ModelRef bx by -> CoupledModel x y
-influences a z = tellBinding . ZInternal a z
+evalCoupledModel :: (Monad m, CoupledModel t) =>
+                    t -> m [CoupledAction (CX t) (CY t)]
+evalCoupledModel t = do
+    let s = CoupledModelBuilder 0 0
+    (_, as) <- execRWST (coupledModelDef t) () s
+    return as
 
 
-newSelfInfluencer :: Z x y ty y -> SelfInfluencer x y
-newSelfInfluencer z = SelfInfluencer z
+--
+-- helpers
+--
+nextInstanceCount :: CoupledModelMonad x y m Int
+nextInstanceCount = state updateInstanceCount
+  where updateInstanceCount s =
+          let i = _instanceCount s
+          in (i, s { _instanceCount = succ i })
 
-
-
-data A deriving (Typeable, Generic)
-
-instance AtomicModel A where
-  type X A = String
-  type Y A = Int
-  data S A = StateA
-
-deriving instance Generic (S A)
-instance Binary (S A)
-
-data B deriving (Typeable, Generic)
-instance AtomicModel B where
-  type X B = Int
-  type Y B = Double
-  data S B = StateB
-
-deriving instance Generic (S B)
-instance Binary (S B)
-
-testC1 :: CoupledModel String Double
-testC1 = do
-  a <- modelInstance "A" StateA
-  bindInput a id
-  b <- modelInstance "B" StateB
-  influences a id b
-  bindOutput b id
-
-
-testC2 :: CoupledModel String Int
-testC2 = do
-  a <- modelInstance "A" StateA
-  b <- coupledInstance "testC1" testC1
-  bindInput b id
-  influences b show a
-  bindOutput a id
-
-c1 = snd $ runWriter testC1
-c2 = snd $ runWriter testC2
+nextBindingCount :: CoupledModelMonad x y m Int
+nextBindingCount = state updateBindingCount
+  where updateBindingCount s =
+          let i = _bindingCount s
+          in (i, s { _bindingCount = succ i })
