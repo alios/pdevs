@@ -23,7 +23,8 @@ library
   exposed-modules:     Control.Devs.PDEVS,
                        Control.Devs.AtomicModel,
                        Control.Devs.CoupledModel,
-                       Control.Devs.CoupledModel.Types
+                       Control.Devs.CoupledModel.Types,
+                       Control.Devs.Backend
 --  other-modules:       
   other-extensions:    TemplateHaskell, Trustworthy
   build-depends:       base >=4.7 && <4.8

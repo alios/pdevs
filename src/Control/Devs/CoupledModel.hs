@@ -46,6 +46,7 @@ module Control.Devs.CoupledModel
 import           Control.Devs.CoupledModel.Types
 import           Control.Monad.RWS
 
+-- | create a 'ModelInstance' of the given 'ModelRef'.
 newInstance :: ModelRef mt t tx ty ->
                CoupledModelMonad x y m (ModelInstance x y mt t tx ty)
 newInstance r = do
@@ -54,18 +55,26 @@ newInstance r = do
   tell [CoupledActionInstance i]
   return i
 
+-- | bind the 'CoupledModel's input to a given 'ModelInstance'.
+--   use the supplied function to map from 'CoupledModel's input 'CX'
+--   to the input of the given 'ModelInstance'.
 bindInput ::
   ModelInstance x y ma a ax ay -> (x -> ax) -> CoupledModelMonad x y m ()
 bindInput i z = do
   bc <- nextBindingCount
   tell [CoupledActionBinding $ InputBinding bc i z]
 
+-- | bind a 'ModelInstance' output to 'CoupledModel's output.
+--   use the supplied function to map from 'ModelInstance's output
+--   to the output of the 'CoupledModel'.
 bindOutput ::
   ModelInstance x y ma a ax ay -> (x -> ax) -> CoupledModelMonad x y m ()
 bindOutput i z = do
   bc <- nextBindingCount
   tell [CoupledActionBinding $ InputBinding bc i z]
 
+-- | bind two 'ModelInstance's inside the 'CoupledModel'.
+--   use the supplied function to map from 'a' output to 'b' input.
 bind ::
   ModelInstance x y ma a ax ay ->
   (ay -> bx) ->
@@ -74,14 +83,6 @@ bind ::
 bind a z b = do
   bc <- nextBindingCount
   tell [CoupledActionBinding $ InternalBinding bc a z b]
-
-evalCoupledModel :: (Monad m, CoupledModel t) =>
-                    t -> m [CoupledAction (CX t) (CY t)]
-evalCoupledModel t = do
-    let s = CoupledModelBuilder 0 0
-    (_, as) <- execRWST (coupledModelDef t) () s
-    return as
-
 
 --
 -- helpers

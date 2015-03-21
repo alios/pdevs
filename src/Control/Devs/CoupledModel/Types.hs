@@ -85,3 +85,12 @@ data CoupledModelBuilder =
                       , _bindingCount  :: Int
                       }
 
+
+-- | evaluate a given 'CoupledModel'
+evalCoupledModel :: (Monad m, CoupledModel t) =>
+                    t -> m [CoupledAction (CX t) (CY t)]
+evalCoupledModel t = do
+    let s = CoupledModelBuilder 0 0
+    (_, as) <- execRWST (coupledModelDef t) () s
+    return as
+
