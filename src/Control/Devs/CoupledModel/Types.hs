@@ -46,7 +46,6 @@ import           Control.Monad.RWS
 import           Data.Binary              (Binary)
 import           Data.Typeable            (Typeable, cast)
 
-
 --
 -- CoupledModelDef / CoupledModelMoand
 --
@@ -89,6 +88,7 @@ data ModelRef mt t x y where
                      t   -> ModelRef 'Coupled t (CX t) (CY t)
 
 deriving instance Typeable ModelRef
+
 
 _AtomicModelRef :: AtomicModel t => Iso' (S t) (ModelRef 'Atomic t (X t) (Y t))
 _AtomicModelRef = iso _f _t
@@ -151,18 +151,24 @@ _InternalBinding = prism' _f _t
 -- Model Instance
 --
 data ModelInstance x y mt t tx ty where
-  Instance :: Int -> ModelRef mt t tx ty -> ModelInstance x y mt t tx ty
+  Instance :: (Typeable mt) =>
+              Int -> ModelRef mt t tx ty -> ModelInstance x y mt t tx ty
 
 deriving instance Typeable ModelInstance
 
-_ModelInstance :: Iso' (Int, ModelRef mt t tx ty) (ModelInstance x y mt t tx ty)
+_ModelInstance :: (Typeable mt) =>
+                  Iso' (Int, ModelRef mt t tx ty) (ModelInstance x y mt t tx ty)
 _ModelInstance = iso (\(i,r) -> Instance i r) (\(Instance i r) -> (i,r))
 
-modelInstanceRef' :: ModelInstance x y mt t tx ty -> ModelRef mt t tx ty
+modelInstanceRef' :: (Typeable mt) =>
+                     ModelInstance x y mt t tx ty -> ModelRef mt t tx ty
 modelInstanceRef' a = a ^. re  _ModelInstance . _2
 
-modelInstanceI :: ModelInstance x y mt t tx ty -> Int
+modelInstanceI :: (Typeable mt) =>
+                  ModelInstance x y mt t tx ty -> Int
 modelInstanceI a = a ^. re _ModelInstance . _1
+
+
 
 
 modelInstanceRef :: ( AtomicModel t, CoupledModel t2
@@ -188,30 +194,26 @@ modelInstanceRef a =
 --
 data CoupledActionT = InstanceAction | BindAction deriving (Typeable)
 
+deriving instance Typeable 'InstanceAction
+deriving instance Typeable 'BindAction
+
+
 data CoupledAction (t :: CoupledActionT) x y where
   CoupledActionBinding ::
     Binding x y ma a ax ay mb b bx by -> CoupledAction 'BindAction x y
-  CoupledActionInstance ::
+  CoupledActionInstance :: (Typeable x, Typeable y, Typeable ma, Typeable a
+                           ,Typeable ax, Typeable ay) =>
     ModelInstance x y ma a ax ay -> CoupledAction 'InstanceAction x y
 
 deriving instance Typeable CoupledAction
 
 
-{-
-foo :: (Typeable t, Typeable x, Typeable y, Typeable ma, Typeable a, Typeable ax, Typeable ay) =>
-       CoupledAction (t :: CoupledActionT) x y ->
-       Maybe (ModelInstance x y ma a ax ay)
--}
-
---foo (CoupledActionBinding b)  = Left b
-
-{-
-_CoupledActionBinding :: Prism' (CoupledAction 'BindAction x y)
-                                 (Binding x y ma a ax ay mb b bx by)
-_CoupledActionBinding = prism' CoupledActionBinding _f
--}
-
-
+coupledActionInstance ::
+  ( AtomicModel t0, CoupledModel t1, Typeable x, Typeable y) =>
+       CoupledAction 'InstanceAction x y ->
+       Either (ModelRef 'Atomic t0 (X t0) (Y t0))
+        (ModelRef 'Coupled t1 (CX t1) (CY t1))
+coupledActionInstance (CoupledActionInstance i)  = modelInstanceRef i
 
 
 --

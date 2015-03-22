@@ -46,10 +46,11 @@ module Control.Devs.CoupledModel
 import           Control.Devs.CoupledModel.Types
 import           Control.Lens
 import           Control.Monad.RWS
-
+import           Data.Typeable                   (Typeable)
 
 -- | create a 'ModelInstance' of the given 'ModelRef'.
-newInstance :: ModelRef mt t tx ty ->
+newInstance :: (Typeable x, Typeable y, Typeable mt, Typeable t
+               , Typeable tx, Typeable ty) => ModelRef mt t tx ty ->
                CoupledModelMonad x y m (ModelInstance x y mt t tx ty)
 newInstance r = do
   ic <- nextInstanceCount
