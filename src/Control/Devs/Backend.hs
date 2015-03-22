@@ -40,9 +40,8 @@ import           Control.Devs.CoupledModel.Types
 class (Monad m) => Backend b m | b -> m where
   data BackendDefinition b :: *
 
-  backendCoupled :: (CoupledModel t) => t -> [CoupledAction (CX t) (CY t)] ->
+  backendCoupled :: (CoupledModel t) => t -> CoupledModelDef (CX t) (CY t) ->
                     m (BackendDefinition b)
-
 
 
 coupledEval :: (CoupledModel t, Backend b m) => t -> m (BackendDefinition b)

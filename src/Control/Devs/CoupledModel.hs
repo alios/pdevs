@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -- | construct coupled models
 module Control.Devs.CoupledModel
   ( -- * ModelReference
-    ModelRef(..),
+    ModelRef, _AtomicModelRef, _CoupledModelRef,
     -- * CoupledModel
     CoupledModel(..),
     -- ** defition of a CoupledModel
@@ -44,15 +44,17 @@ module Control.Devs.CoupledModel
   ) where
 
 import           Control.Devs.CoupledModel.Types
+import           Control.Lens
 import           Control.Monad.RWS
+
 
 -- | create a 'ModelInstance' of the given 'ModelRef'.
 newInstance :: ModelRef mt t tx ty ->
                CoupledModelMonad x y m (ModelInstance x y mt t tx ty)
 newInstance r = do
   ic <- nextInstanceCount
-  let i = Instance ic r
-  tell [CoupledActionInstance i]
+  let i = (ic, r) ^. _ModelInstance
+  tell [Left $ CoupledActionInstance i]
   return i
 
 -- | bind the 'CoupledModel's input to a given 'ModelInstance'.
@@ -62,16 +64,16 @@ bindInput ::
   ModelInstance x y ma a ax ay -> (x -> ax) -> CoupledModelMonad x y m ()
 bindInput i z = do
   bc <- nextBindingCount
-  tell [CoupledActionBinding $ InputBinding bc i z]
+  tell [Right $ CoupledActionBinding $ _InputBinding # (bc, i, z) ]
 
 -- | bind a 'ModelInstance' output to 'CoupledModel's output.
 --   use the supplied function to map from 'ModelInstance's output
 --   to the output of the 'CoupledModel'.
 bindOutput ::
-  ModelInstance x y ma a ax ay -> (x -> ax) -> CoupledModelMonad x y m ()
+  ModelInstance x y ma a ax ay -> (ay -> y) -> CoupledModelMonad x y m ()
 bindOutput i z = do
   bc <- nextBindingCount
-  tell [CoupledActionBinding $ InputBinding bc i z]
+  tell [Right $ CoupledActionBinding $ _OutputBinding # (bc, i, z)]
 
 -- | bind two 'ModelInstance's inside the 'CoupledModel'.
 --   use the supplied function to map from 'a' output to 'b' input.
@@ -82,7 +84,7 @@ bind ::
   CoupledModelMonad x y m ()
 bind a z b = do
   bc <- nextBindingCount
-  tell [CoupledActionBinding $ InternalBinding bc a z b]
+  tell [Right $ CoupledActionBinding $ _InternalBinding # (bc, a, z, b)]
 
 --
 -- helpers
