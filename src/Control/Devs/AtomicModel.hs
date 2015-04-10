@@ -27,32 +27,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
 
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE Safe               #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE Trustworthy        #-}
 {-# LANGUAGE TypeFamilies       #-}
 
 -- | The type class for /Atomic Models/.
-module Control.Devs.AtomicModel where
+module Control.Devs.AtomicModel
+       ( module Control.Devs.Model
+       , AtomicModel(..), T
+       ) where
 
+import           Control.Devs.Model
 import           Data.Binary
+import           Data.Set           (Set)
 import           Data.Typeable
-import           Data.Vector   (Vector)
-
 
 -- | The 'Time' type 'T'
 type T = Double
 
 -- | The /Parallel DEVS (P-DEVS)/ Model [PDEVS94].
-class (Typeable m, Typeable (X m), Binary (X m),
-       Typeable (Y m), Binary (Y m),
-       Binary (S m)) => AtomicModel m  where
-  -- | the input type
-  type X m :: *
-  -- | the output type
-  type Y m :: *
+class (Model m, Typeable m, Binary (S m)) => AtomicModel m where
+
   -- | the state type
   data S m :: *
 
@@ -60,10 +55,10 @@ class (Typeable m, Typeable (X m), Binary (X m),
   deltaInt :: S m -> S m
 
   -- | the external transition function
-  deltaExt :: (S m, T) -> Vector (X m) -> S m
+  deltaExt :: (S m, T) -> Set (X m) -> S m
 
   -- | the confluent transition function
-  deltaCon :: S m -> Vector (X m) -> S m
+  deltaCon :: S m -> Set (X m) -> S m
 
   -- | the output function
   lambda   :: S m -> Y m

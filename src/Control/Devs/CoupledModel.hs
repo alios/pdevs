@@ -26,11 +26,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
 
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE Safe       #-}
+{-# LANGUAGE Safe #-}
 
 -- | construct coupled models
 module Control.Devs.CoupledModel
+       ( module Control.Devs.Model
+       , CoupledModel (..)
+       , CM, ModelInstance, Component, Binding
+       , newAtomicInstance, newCoupledInstance
+       , bindInput, bindOutput, bind
+       ) where
+
+{-
+
   ( -- * ModelReference
     ModelRef, _AtomicModelRef, _CoupledModelRef,
     -- * CoupledModel
@@ -41,63 +49,54 @@ module Control.Devs.CoupledModel
     -- ** evaluate a CoupledModel
     CoupledAction(..),
     evalCoupledModel
-  ) where
+  )
+-}
 
+import           Control.Devs.AtomicModel
 import           Control.Devs.CoupledModel.Types
-import           Control.Lens
+import           Control.Devs.Model
 import           Control.Monad.RWS
-import           Data.Typeable                   (Typeable)
 
--- | create a 'ModelInstance' of the given 'ModelRef'.
-newInstance :: (Typeable x, Typeable y, Typeable mt, Typeable t
-               , Typeable tx, Typeable ty) => ModelRef mt t tx ty ->
-               CoupledModelMonad x y m (ModelInstance x y mt t tx ty)
-newInstance r = do
-  ic <- nextInstanceCount
-  let i = (ic, r) ^. _ModelInstance
-  tell [Left $ CoupledActionInstance i]
-  return i
+import qualified Data.IntMap                     as IntMap
+
+
+-- | create a 'ModelInstance' of the given 'AtomicModel'.
+newAtomicInstance :: (AtomicModel a, CoupledModel m) =>
+               S a -> CM m (ModelInstance m a)
+newAtomicInstance s0 = do
+  i <- fmap IntMap.size get
+  let m = AModel i s0
+      c = MkComponent m
+  modify $ IntMap.insert i c
+  return m
+
+-- | create a 'ModelInstance' of the given 'CoupledModel'.
+newCoupledInstance :: (CoupledModel a, CoupledModel m) =>
+               CoupledModelRef a -> CM m (ModelInstance m a)
+newCoupledInstance r = do
+  i <- fmap IntMap.size get
+  let m = CModel i r
+      c = MkComponent m
+  modify $ IntMap.insert i c
+  return m
 
 -- | bind the 'CoupledModel's input to a given 'ModelInstance'.
 --   use the supplied function to map from 'CoupledModel's input 'CX'
 --   to the input of the given 'ModelInstance'.
-bindInput ::
-  ModelInstance x y ma a ax ay -> (x -> ax) -> CoupledModelMonad x y m ()
-bindInput i z = do
-  bc <- nextBindingCount
-  tell [Right $ CoupledActionBinding $ _InputBinding # (bc, i, z) ]
+bindInput :: (Model a, CoupledModel m) =>
+             ModelInstance m a -> (X m -> X a) -> CM m ()
+bindInput a = tell . pure . BindInput a
 
 -- | bind a 'ModelInstance' output to 'CoupledModel's output.
 --   use the supplied function to map from 'ModelInstance's output
 --   to the output of the 'CoupledModel'.
-bindOutput ::
-  ModelInstance x y ma a ax ay -> (ay -> y) -> CoupledModelMonad x y m ()
-bindOutput i z = do
-  bc <- nextBindingCount
-  tell [Right $ CoupledActionBinding $ _OutputBinding # (bc, i, z)]
+bindOutput :: (Model a, CoupledModel m) =>
+              ModelInstance m a -> (Y a -> Y m) -> CM m ()
+bindOutput a = tell . pure . BindOutput a
 
 -- | bind two 'ModelInstance's inside the 'CoupledModel'.
 --   use the supplied function to map from 'a' output to 'b' input.
-bind ::
-  ModelInstance x y ma a ax ay ->
-  (ay -> bx) ->
-  ModelInstance x y mb b bx by ->
-  CoupledModelMonad x y m ()
-bind a z b = do
-  bc <- nextBindingCount
-  tell [Right $ CoupledActionBinding $ _InternalBinding # (bc, a, z, b)]
+bind :: (Model a, Model b, CoupledModel m) =>
+        ModelInstance m a -> (Y a -> X b) -> ModelInstance m b -> CM m ()
+bind a z = tell . pure . Bind a z
 
---
--- helpers
---
-nextInstanceCount :: CoupledModelMonad x y m Int
-nextInstanceCount = state updateInstanceCount
-  where updateInstanceCount s =
-          let i = _instanceCount s
-          in (i, s { _instanceCount = succ i })
-
-nextBindingCount :: CoupledModelMonad x y m Int
-nextBindingCount = state updateBindingCount
-  where updateBindingCount s =
-          let i = _bindingCount s
-          in (i, s { _bindingCount = succ i })

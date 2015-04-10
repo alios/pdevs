@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-
 Copyright (c) 2015, Markus Barenhoff <alios@alios.org>
 All rights reserved.
@@ -26,25 +27,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
 
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE Safe                   #-}
-{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE Safe             #-}
+{-# LANGUAGE TypeFamilies     #-}
 
--- | construct coupled models
-module Control.Devs.Backend where
+module Control.Devs.Model where
 
-import           Control.Devs.CoupledModel.Types
+import           Data.Binary
+import           Data.Typeable
 
-
-class (Monad m) => Backend b m | b -> m where
-  data BackendDefinition b :: *
-
-  backendCoupled :: (CoupledModel t) => t -> CoupledModelDef (CX t) (CY t) ->
-                    m (BackendDefinition b)
-
-
-coupledEval :: (CoupledModel t, Backend b m) => t -> m (BackendDefinition b)
-coupledEval t = evalCoupledModel t >>= backendCoupled t
-
-
+class (Typeable (X m), Binary (X m),
+       Typeable (Y m), Binary (Y m)) => Model m where
+  type X m :: *
+  type Y m :: *

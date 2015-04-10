@@ -36,12 +36,9 @@ module Control.Devs.PDEVS
    module Control.Devs.AtomicModel,
    -- * the coupled model
    module Control.Devs.CoupledModel,
-   -- * the backend definition
-   module Control.Devs.Backend
  ) where
 
 import           Control.Devs.AtomicModel
-import           Control.Devs.Backend
 import           Control.Devs.CoupledModel
 
 -- $references

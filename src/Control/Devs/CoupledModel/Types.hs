@@ -26,204 +26,37 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
 
-
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE DeriveDataTypeable  #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE Rank2Types          #-}
-{-# LANGUAGE Safe                #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE GADTs        #-}
+{-# LANGUAGE Safe         #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Control.Devs.CoupledModel.Types where
 
-
 import           Control.Devs.AtomicModel
-import           Control.Lens
 import           Control.Monad.RWS
-import           Data.Binary              (Binary)
-import           Data.Typeable            (Typeable, cast)
+import           Data.IntMap              (IntMap)
 
---
--- CoupledModelDef / CoupledModelMoand
---
-type CoupledModelDef x y = [Either (CoupledAction 'InstanceAction x y)
-                            (CoupledAction 'BindAction x y)]
+class (Model m) => CoupledModel m where
+  data CoupledModelRef m :: *
+  cm :: CM m ()
 
-type CoupledModelMonad x y m a = (Monad m) =>
-  RWST () (CoupledModelDef x y) CoupledModelBuilder m a
+data Component m where
+ MkComponent :: (CoupledModel m, Model a) => ModelInstance m a -> Component m
 
+data Binding m where
+  Bind :: (Model a, Model b, CoupledModel m) =>
+    ModelInstance m a -> (Y a -> X b) -> ModelInstance m b -> Binding m
+  BindInput :: (Model a, CoupledModel m) =>
+    ModelInstance m a -> (X m -> X a) -> Binding m
+  BindOutput :: (Model a, CoupledModel m) =>
+    ModelInstance m a -> (Y a -> Y m) -> Binding m
 
-class ( Typeable t, Typeable (CX t), Typeable (CY t)
-      , Binary (CX t), Binary (CY t)) =>
-      CoupledModel t where
-  type CX t :: *
-  type CY t :: *
+type CM m a = RWS () [Binding m] (IntMap (Component m)) a
 
-  coupledModelDef :: t -> CoupledModelMonad (CX t) (CY t) m ()
-
--- | evaluate a given 'CoupledModel'
-evalCoupledModel :: (Monad m, CoupledModel t) =>
-                    t -> m (CoupledModelDef (CX t) (CY t))
-evalCoupledModel t = do
-    let s = CoupledModelBuilder 0 0
-    (_, as) <- execRWST (coupledModelDef t) () s
-    return as
-
-
---
--- ModelRef
---
-data ModelType = Atomic | Coupled | UndefModel deriving (Typeable)
-
-deriving instance Typeable 'Atomic
-deriving instance Typeable 'Coupled
-
-data ModelRef mt t x y where
-  AtomicModelRef  :: (AtomicModel t)  =>
-                     S t -> ModelRef 'Atomic t (X t) (Y t)
-  CoupledModelRef :: (CoupledModel t) =>
-                     t   -> ModelRef 'Coupled t (CX t) (CY t)
-
-deriving instance Typeable ModelRef
-
-
-_AtomicModelRef :: AtomicModel t => Iso' (S t) (ModelRef 'Atomic t (X t) (Y t))
-_AtomicModelRef = iso _f _t
-  where _f = AtomicModelRef
-        _t ((AtomicModelRef s0) :: ModelRef 'Atomic t (X t) (Y t)) = s0
-
-_CoupledModelRef :: CoupledModel t => Iso' t (ModelRef 'Coupled t (CX t) (CY t))
-_CoupledModelRef = iso _f _t
-  where _f = CoupledModelRef
-        _t ((CoupledModelRef t) :: ModelRef 'Coupled t (CX t) (CY t)) = t
-
-
-
-
---
--- Binding
---
-data Binding x y ma a ax ay mb b bx by where
-  InputBinding ::
-    Int -> ModelInstance x y ma a ax ay -> (x -> ax) ->
-    Binding x y ma a ax ay 'UndefModel () () ()
-  OutputBinding ::
-    Int -> ModelInstance x y ma a ax ay -> (ay -> y) ->
-    Binding x y ma a ax ay 'UndefModel () () ()
-  InternalBinding ::
-    Int -> ModelInstance x y ma a ax ay -> (ay -> bx) ->
-    ModelInstance x y mb b bx by -> Binding x y ma a ax ay mb b bx by
-
-deriving instance Typeable Binding
-
-
-_InputBinding :: Prism' (Binding x y ma a ax ay 'UndefModel () () ())
-                         (Int, ModelInstance x y ma a ax ay, x -> ax)
-_InputBinding = prism' _f _t
-  where _f (i, m, z) = InputBinding i m z
-        _t ((InputBinding i m z) ::
-               Binding x y ma a ax ay 'UndefModel () () ()) = Just (i, m, z)
-        _t _ = Nothing
-
-
-_OutputBinding :: Prism' (Binding x y ma a ax ay 'UndefModel () () ())
-                         (Int, ModelInstance x y ma a ax ay, ay -> y)
-_OutputBinding = prism' _f _t
-  where _f (i, m, z) = OutputBinding i m z
-        _t ((OutputBinding i m z) ::
-               Binding x y ma a ax ay 'UndefModel () () ()) = Just (i, m, z)
-        _t _ = Nothing
-
-_InternalBinding :: Prism' (Binding x y ma a ax ay mb b bx by)
-               (Int, ModelInstance x y ma a ax ay, (ay -> bx),
-                ModelInstance x y mb b bx by)
-_InternalBinding = prism' _f _t
-  where _f (i,a,z,b) = InternalBinding i a z b
-        _t ((InternalBinding i a z b) :: Binding x y ma a ax ay mb b bx by) =
-          Just (i,a,z,b)
-        _t _ = Nothing
-
-
---
--- Model Instance
---
-data ModelInstance x y mt t tx ty where
-  Instance :: (Typeable mt) =>
-              Int -> ModelRef mt t tx ty -> ModelInstance x y mt t tx ty
-
-deriving instance Typeable ModelInstance
-
-_ModelInstance :: (Typeable mt) =>
-                  Iso' (Int, ModelRef mt t tx ty) (ModelInstance x y mt t tx ty)
-_ModelInstance = iso (\(i,r) -> Instance i r) (\(Instance i r) -> (i,r))
-
-modelInstanceRef' :: (Typeable mt) =>
-                     ModelInstance x y mt t tx ty -> ModelRef mt t tx ty
-modelInstanceRef' a = a ^. re  _ModelInstance . _2
-
-modelInstanceI :: (Typeable mt) =>
-                  ModelInstance x y mt t tx ty -> Int
-modelInstanceI a = a ^. re _ModelInstance . _1
-
-
-
-
-modelInstanceRef :: ( AtomicModel t, CoupledModel t2
-                    , Typeable ma, Typeable ta, Typeable ax, Typeable ay) =>
-                    (ModelInstance x y ma ta ax ay) ->
-                    (Either
-                     (ModelRef 'Atomic t (X t) (Y t))
-                      (ModelRef 'Coupled t2 (CX t2) (CY t2) ))
-modelInstanceRef a =
-  let ca = case (cast $ modelInstanceRef' a) of
-        Just (a' :: ModelRef 'Atomic t (X t) (Y t)) -> Just $ Left a'
-        Nothing -> Nothing
-      cb = case (cast $ modelInstanceRef' a) of
-        Just (a' :: ModelRef 'Coupled t2 (CX t2) (CY t2)) -> Just $ Right a'
-        Nothing -> Nothing
-      cab = maybe (error "modelInstanceRef: got undefined instance ref") id cb
-  in maybe cab id ca
-
-
-
---
--- CoupledAction
---
-data CoupledActionT = InstanceAction | BindAction deriving (Typeable)
-
-deriving instance Typeable 'InstanceAction
-deriving instance Typeable 'BindAction
-
-
-data CoupledAction (t :: CoupledActionT) x y where
-  CoupledActionBinding ::
-    Binding x y ma a ax ay mb b bx by -> CoupledAction 'BindAction x y
-  CoupledActionInstance :: (Typeable x, Typeable y, Typeable ma, Typeable a
-                           ,Typeable ax, Typeable ay) =>
-    ModelInstance x y ma a ax ay -> CoupledAction 'InstanceAction x y
-
-deriving instance Typeable CoupledAction
-
-
-coupledActionInstance ::
-  ( AtomicModel t0, CoupledModel t1, Typeable x, Typeable y) =>
-       CoupledAction 'InstanceAction x y ->
-       Either (ModelRef 'Atomic t0 (X t0) (Y t0))
-        (ModelRef 'Coupled t1 (CX t1) (CY t1))
-coupledActionInstance (CoupledActionInstance i)  = modelInstanceRef i
-
-
---
--- CoupledModelBuilder
---
-
-data CoupledModelBuilder =
-  CoupledModelBuilder { _instanceCount :: Int
-                      , _bindingCount  :: Int
-                      } deriving (Typeable)
-
+data ModelInstance m a where
+  AModel :: (CoupledModel m, AtomicModel a) =>
+    Int -> S a -> ModelInstance m a
+  CModel :: (CoupledModel m, CoupledModel a) =>
+    Int -> CoupledModelRef a -> ModelInstance m a
 
 
