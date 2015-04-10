@@ -26,7 +26,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
 
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE Safe       #-}
 
 -- | construct coupled models
 module Control.Devs.CoupledModel

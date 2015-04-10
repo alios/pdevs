@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
 {-# LANGUAGE GADTs        #-}
+{-# LANGUAGE Rank2Types   #-}
 {-# LANGUAGE Safe         #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -35,6 +36,8 @@ module Control.Devs.CoupledModel.Types where
 import           Control.Devs.AtomicModel
 import           Control.Monad.RWS
 import           Data.IntMap              (IntMap)
+
+type CM m a = CoupledModel m => RWS () [Binding m] (IntMap (Component m)) a
 
 class (Model m) => CoupledModel m where
   data CoupledModelRef m :: *
@@ -50,8 +53,6 @@ data Binding m where
     ModelInstance m a -> (X m -> X a) -> Binding m
   BindOutput :: (Model a, CoupledModel m) =>
     ModelInstance m a -> (Y a -> Y m) -> Binding m
-
-type CM m a = RWS () [Binding m] (IntMap (Component m)) a
 
 data ModelInstance m a where
   AModel :: (CoupledModel m, AtomicModel a) =>

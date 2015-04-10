@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -- | The /Discrete Event System Sepcification (DEVS)/ formalism defines
 --   discrete event simulation models in a hierachical, modular manner.
 --   This implementation is based on the paper /Parallel DEVS: a parallel, hierarchical, modular modeling formalism/ [PDEVS94].
-module Control.Devs.PDEVS
+module Control.Devs
  ( -- * the atomic model
    module Control.Devs.AtomicModel,
    -- * the coupled model
