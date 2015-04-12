@@ -41,5 +41,13 @@ module Control.Devs
 import           Control.Devs.AtomicModel
 import           Control.Devs.CoupledModel
 
+
+
+
+
+
+
+
 -- $references
 -- * [PDEVS94] Chow, A.C.; Zeigler, B.P., /Parallel DEVS: a parallel, hierarchical, modular modeling formalism/, Simulation Conference Proceedings, 1994. Winter, pp.716,722, 11-14 Dec. 1994, URL: <http://www.bgc-jena.mpg.de/~twutz/devsbridge/pub/chow96_parallelDEVS.pdf>
+

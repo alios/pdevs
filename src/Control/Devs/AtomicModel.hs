@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -- | The type class for /Atomic Models/.
 module Control.Devs.AtomicModel
        ( module Control.Devs.Model
-       , AtomicModel(..), T
+       , AtomicModel(..)
        ) where
 
 import           Control.Devs.Model
@@ -42,29 +42,38 @@ import           Data.Binary
 import           Data.Set           (Set)
 import           Data.Typeable
 
--- | The 'Time' type 'T'
-type T = Double
+infinityT :: (Fractional t) => t
+infinityT = 1 / 0
 
 -- | The /Parallel DEVS (P-DEVS)/ Model [PDEVS94].
-class (Model m, Typeable m, Binary (S m)) => AtomicModel m where
+class (Model m, Typeable m, Binary (S m)) =>
+      AtomicModel m where
+
+  -- | the time type
+  type T m :: *
+  toT :: Double -> T m
 
   -- | the state type
   data S m :: *
 
   -- | the internal transition function
   deltaInt :: S m -> S m
+  deltaInt = id
 
   -- | the external transition function
-  deltaExt :: (S m, T) -> Set (X m) -> S m
+  deltaExt :: (S m, T m) -> Set (X m) -> S m
+  deltaExt (st, _) _ = st
 
   -- | the confluent transition function
   deltaCon :: S m -> Set (X m) -> S m
+  deltaCon st _ = st
 
   -- | the output function
   lambda   :: S m -> Y m
 
   -- | the time-advance function
-  ta       :: S m -> T
+  ta       :: S m -> T m
+
 
 deriving instance Typeable S
 
