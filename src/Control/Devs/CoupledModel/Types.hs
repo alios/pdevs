@@ -34,8 +34,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 module Control.Devs.CoupledModel.Types where
 
 import           Control.Devs.AtomicModel
+import           Control.Lens
 import           Control.Monad.RWS
 import           Data.IntMap              (IntMap)
+import           Data.Maybe
 
 type CM m a = CoupledModel m => RWS () [Binding m] (IntMap (Component m)) a
 
@@ -54,10 +56,31 @@ data Binding m where
   BindOutput :: (Model a, CoupledModel m) =>
     ModelInstance m a -> (Y a -> Y m) -> Binding m
 
+
 data ModelInstance m a where
   AModel :: (CoupledModel m, AtomicModel a) =>
     Int -> S a -> ModelInstance m a
   CModel :: (CoupledModel m, CoupledModel a) =>
     Int -> CoupledModelRef a -> ModelInstance m a
+
+instanceId :: (CoupledModel m, Model a) => Lens' (ModelInstance m a) Int
+instanceId = lens g s
+  where g (AModel i _) = i
+        g (CModel i _) = i
+        s (AModel _ s) i = (AModel i s)
+        s (CModel _ r) i = (CModel i r)
+
+
+getInfluencers :: CoupledModel m => Maybe Int -> [Binding m] -> [Binding m]
+getInfluencers a = fmap fromJust . filter isJust . fmap (isInfluencer a)
+
+isInfluencer :: (CoupledModel m) => Maybe Int -> Binding m -> Maybe (Binding m)
+isInfluencer (Just i) b@(BindInput a _) =
+  if(a ^. instanceId == i) then Just b else Nothing
+isInfluencer (Just i) b@(Bind _ _ a) =
+  if(a ^. instanceId == i) then Just b else Nothing
+isInfluencer Nothing b@(BindOutput _ _) = Just b
+isInfluencer _ _ = Nothing
+
 
 
