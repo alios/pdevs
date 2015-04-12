@@ -69,7 +69,7 @@ class (Model m, Typeable m, Binary (S m)) =>
   deltaCon st _ = st
 
   -- | the output function
-  lambda   :: S m -> Y m
+  lambda   :: S m -> Maybe (Y m)
 
   -- | the time-advance function
   ta       :: S m -> T m

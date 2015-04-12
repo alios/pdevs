@@ -63,12 +63,6 @@ data ModelInstance m a where
   CModel :: (CoupledModel m, CoupledModel a) =>
     Int -> CoupledModelRef a -> ModelInstance m a
 
-instanceId :: (CoupledModel m, Model a) => Lens' (ModelInstance m a) Int
-instanceId = lens g s
-  where g (AModel i _) = i
-        g (CModel i _) = i
-        s (AModel _ s) i = (AModel i s)
-        s (CModel _ r) i = (CModel i r)
 
 
 getInfluencers :: CoupledModel m => Maybe Int -> [Binding m] -> [Binding m]
@@ -81,6 +75,14 @@ isInfluencer (Just i) b@(Bind _ _ a) =
   if(a ^. instanceId == i) then Just b else Nothing
 isInfluencer Nothing b@(BindOutput _ _) = Just b
 isInfluencer _ _ = Nothing
+
+instanceId :: (CoupledModel m, Model a) => Lens' (ModelInstance m a) Int
+instanceId = lens g s
+  where g (AModel i _) = i
+        g (CModel i _) = i
+        s (AModel _ s) i = (AModel i s)
+        s (CModel _ r) i = (CModel i r)
+
 
 
 
