@@ -48,6 +48,16 @@ class Tish t where
   -- | convert a 'Double' to time.
   toT :: Double -> t
 
+instance Tish Double where
+  toT = id
+
+instance Tish Float where
+  toT = fromRational . toRational
+
+instance Tish Integer where
+  toT = round
+
+
 -- | The /Parallel DEVS (P-DEVS)/ Model [PDEVS94].
 class (Model m, Typeable m, Binary (S m), Tish (T m)) =>
       AtomicModel m where
