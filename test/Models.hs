@@ -21,6 +21,8 @@ data PingPongRecvMsg = PingPongRecvMsg deriving (Typeable, Generic)
 instance Binary PingPongSendMsg
 instance Binary PingPongRecvMsg
 
+instance Tish (Time Double) where
+  toT i = i *~ second
 
 instance Model PingPongPlayer where
   type X PingPongPlayer = PingPongRecvMsg
@@ -28,14 +30,13 @@ instance Model PingPongPlayer where
 
 instance AtomicModel PingPongPlayer where
   type T PingPongPlayer = Time Double
-  toT i = i *~ second
   data S PingPongPlayer =
     PingPongSend (T PingPongPlayer) |
     PingPongWait (T PingPongPlayer) deriving (Typeable, Generic)
 
   ta (PingPongSend t) = t
   ta (PingPongWait t) = t
-  deltaInt (PingPongSend t) = PingPongWait $ ((P./) 1 0) *~ second
+  deltaInt (PingPongSend t) = PingPongWait $ t_infinity
   deltaInt (PingPongWait t) = PingPongSend $ 0.1 *~ second
   lambda (PingPongSend t) = Just PingPongSendMsg
   lambda (PingPongWait t) = Nothing

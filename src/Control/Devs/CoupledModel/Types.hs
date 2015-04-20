@@ -80,7 +80,7 @@ instanceId :: (CoupledModel m, Model a) => Lens' (ModelInstance m a) Int
 instanceId = lens g s
   where g (AModel i _) = i
         g (CModel i _) = i
-        s (AModel _ s) i = (AModel i s)
+        s (AModel _ st) i = (AModel i st)
         s (CModel _ r) i = (CModel i r)
 
 

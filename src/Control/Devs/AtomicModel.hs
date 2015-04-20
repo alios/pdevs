@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -- | The type class for /Atomic Models/.
 module Control.Devs.AtomicModel
        ( module Control.Devs.Model
-       , AtomicModel(..)
+       , AtomicModel(..), Tish(..), t_infinity
        ) where
 
 import           Control.Devs.Model
@@ -42,16 +42,18 @@ import           Data.Binary
 import           Data.Set           (Set)
 import           Data.Typeable
 
-infinityT :: (Fractional t) => t
-infinityT = 1 / 0
+
+-- | types which can be used as 'T'
+class Tish t where
+  -- | convert a 'Double' to time.
+  toT :: Double -> t
 
 -- | The /Parallel DEVS (P-DEVS)/ Model [PDEVS94].
-class (Model m, Typeable m, Binary (S m)) =>
+class (Model m, Typeable m, Binary (S m), Tish (T m)) =>
       AtomicModel m where
 
   -- | the time type
   type T m :: *
-  toT :: Double -> T m
 
   -- | the state type
   data S m :: *
@@ -74,8 +76,13 @@ class (Model m, Typeable m, Binary (S m)) =>
   -- | the time-advance function
   ta       :: S m -> T m
 
-
 deriving instance Typeable S
+
+-- | the infinite time interval
+t_infinity :: (Tish t) => t
+t_infinity = toT infinityT
+infinityT :: (Fractional t) => t
+infinityT = 1 / 0
 
 
 -- $references
