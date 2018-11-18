@@ -5,22 +5,18 @@
 {-# LANGUAGE KindSignatures         #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeOperators          #-}
 
-module Lib
-    ( AtomicModel, HasAtomicModel(..), _AtomicModel, defaultAtomicModel
-    , CoupledModel, newSimulator, newCoordinator
-    , bindInput, bindOutput, bindIntern
-    , RootCoordinator
-    ) where
+module Lib where
 
 import           Control.Lens.Getter    (view)
 import           Control.Lens.Operators (( # ))
 import           Control.Lens.Review    (review)
 import           Control.Lens.TH        (makeClassy, makePrisms)
 import           Data.Vector            (Vector)
-import           GHC.TypeNats
-
+import           Data.Void              (Void)
+import           GHC.TypeLits
 
 data AtomicModel t s x y = AtomicModel
   { _deltaInt :: s -> s
@@ -35,45 +31,51 @@ makeClassy ''AtomicModel
 
 defaultAtomicModel :: (Fractional t) => AtomicModel t s x y
 defaultAtomicModel =
-  _AtomicModel # (id, \s _ _ -> s,  \s _ _ -> s, const mempty, const (1/0) )
+  _AtomicModel # (id, constState, constState, const mempty, const (1/0) )
+  where constState s _ = const s
 
-newtype CoupledModel (n :: Nat) t x y a = CoupledModel ()
 
-instance Functor (CoupledModel n t x y)
-instance Applicative (CoupledModel n t x y)
-instance Monad (CoupledModel n t x y)
+data Component t (d :: [*]) x y
 
-data Component (n :: Nat) t x y where
-  Simulator       :: AtomicModel t s x y -> Component n t x y
-  Coordinator     :: CoupledModel (n + 1) t x y () -> Component n t x y
+data Simulation t x y
 
-makeClassy ''Component
-makePrisms ''Component
+newtype CoupledT t (d :: [*]) x y a =
+  CoupledT ()
 
-newtype RootCoordinator t x y =
-  RootCoordinator (CoupledModel 0 t x y ())
+instance Functor (CoupledT t d x y)
+instance Applicative (CoupledT t d x y)
+instance Monad (CoupledT t d x y)
 
-makeClassy ''RootCoordinator
-makePrisms ''RootCoordinator
 
-newSimulator :: (KnownNat n, HasAtomicModel c t s' x' y')
-             => c -> CoupledModel n t x y (Component n t x' y')
-newSimulator = pure . review _Simulator . view atomicModel
+mkSimulator :: AtomicModel t s x' y' -> CoupledT t d x y (Component t d x' y')
+mkSimulator m = undefined
 
-newCoordinator :: (KnownNat n)
-               => CoupledModel (n + 1) t x' y' ()
-               -> CoupledModel n t x y (Component n t x' y')
-newCoordinator = pure . review _Coordinator
+mkCoordinator :: CoupledT t (d':d) x' y' () -> CoupledT t d x y (Component t d x' y')
+mkCoordinator m = undefined
 
-bindInput :: (KnownNat n)
-          => Component n t x' y' -> (x -> x') -> CoupledModel n t x y ()
-bindInput = undefined
+bindInput :: Component t d x' y' -> (x -> x') -> CoupledT t d x y ()
+bindInput c f = undefined
 
-bindOutput :: (KnownNat n)
-           => Component n t x' y' -> (y' -> y) -> CoupledModel n t x y ()
-bindOutput = undefined
+bindOutput :: Component t d x' y' -> (y' -> y) -> CoupledT t d x y ()
+bindOutput c f = undefined
 
-bindIntern :: (KnownNat n)
-           => Component n t x' y' -> Component n t x'' y'' -> (y' -> x'')
-           -> CoupledModel n t x y ()
+bindIntern :: Component t d x' y' -> Component t d x'' y'' -> (y' -> x'') -> CoupledT t d x y ()
 bindIntern = undefined
+
+mkRootCoordinator :: CoupledT t '[] x y (Component t '[] x' y') -> Simulation t x' y'
+mkRootCoordinator = undefined
+
+m1 :: AtomicModel Float () Int Double
+m1 = defaultAtomicModel
+
+t1 = mkRootCoordinator . mkCoordinator $ do
+  s0 <- mkSimulator m1
+  c1 <- mkCoordinator $ pure ()
+
+  c0 <- mkCoordinator $ do
+    s1 <- mkSimulator m1
+    bindInput s1 id
+    bindOutput s1 show
+  bindIntern s0 c0 round
+  bindInput s0 id
+  bindOutput c0 id
