@@ -35,7 +35,13 @@ defaultAtomicModel =
   where constState s _ = const s
 
 
-data Component t (d :: [*]) x y
+data Component t (d :: [*]) x y where
+  Simulator :: AtomicModel t s x y -> Component t d x y
+
+data Z t d x y where
+  BindInput  :: Component t d x' y' -> (x -> x')  -> Z t d x y
+  BindOutput :: Component t d x' y' -> (y' -> y) -> Z t d x y
+  BindIntern :: Component t d x' y' -> Component t d x'' y'' -> (y' -> x'') -> Z t d x y
 
 data Simulation t x y
 
@@ -47,20 +53,26 @@ instance Applicative (CoupledT t d x y)
 instance Monad (CoupledT t d x y)
 
 
-mkSimulator :: AtomicModel t s x' y' -> CoupledT t d x y (Component t d x' y')
-mkSimulator m = undefined
+mkSimulator :: HasAtomicModel m t s x' y' => m -> CoupledT t d x y (Component t d x' y')
+mkSimulator = pure . Simulator . view atomicModel
 
 mkCoordinator :: CoupledT t (d':d) x' y' () -> CoupledT t d x y (Component t d x' y')
 mkCoordinator m = undefined
 
 bindInput :: Component t d x' y' -> (x -> x') -> CoupledT t d x y ()
-bindInput c f = undefined
+bindInput c f =
+  let z = BindInput c f
+  in undefined
 
 bindOutput :: Component t d x' y' -> (y' -> y) -> CoupledT t d x y ()
-bindOutput c f = undefined
+bindOutput c f =
+  let z = BindOutput c f
+  in undefined
 
 bindIntern :: Component t d x' y' -> Component t d x'' y'' -> (y' -> x'') -> CoupledT t d x y ()
-bindIntern = undefined
+bindIntern a b f =
+  let z = BindIntern a b f
+  in undefined
 
 mkRootCoordinator :: CoupledT t '[] x y (Component t '[] x' y') -> Simulation t x' y'
 mkRootCoordinator = undefined
