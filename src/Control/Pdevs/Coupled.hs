@@ -42,6 +42,9 @@ instance (Monad m) => MonadCoupled (CoupledT t d x y m) t d x y where
     (:) <$> pure i <*> use coupledStatePath
   addBinding = tell . pure
 
+instance MonadTrans (CoupledT t d x y) where
+  lift = liftCoupledT
+
 liftCoupledT :: (Monad m) => m a -> CoupledT t d x y m  a
 liftCoupledT = undefined
 
@@ -51,5 +54,5 @@ runCoupledT p (CoupledT m) = snd <$> runWriterT (evalStateT m (_CoupledState # p
 mkCoordinator :: Monad m => CoupledT t (d' : d) x' y' m () -> CoupledT t d x y m (Component t d x' y')
 mkCoordinator m = do
   p <- nextComponentPath
-  xx <- liftCoupledT $ runCoupledT p m
-  return $ Coordinator p xx
+  c <- lift $ runCoupledT p m
+  return $ Coordinator p c
