@@ -1,8 +1,3 @@
-dist/
-.cabal-sandbox/
-cabal.sandbox.config
-*.swp
+.stack-work/
+pdevs.cabal
 *~
-TAGS
-*#*#
-*.#*
