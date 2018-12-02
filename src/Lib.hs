@@ -20,4 +20,4 @@ t1 = mkRootCoordinator . mkCoordinator $ do
   bindOutput c0 id
 
 printT1 :: IO ()
-printT1 = t1 >>= rk
+printT1 = t1 >>= print
