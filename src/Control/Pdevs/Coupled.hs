@@ -43,10 +43,7 @@ instance (Monad m) => MonadCoupled (CoupledT t d x y m) t d x y where
   addBinding = tell . pure
 
 instance MonadTrans (CoupledT t d x y) where
-  lift = liftCoupledT
-
-liftCoupledT :: (Monad m) => m a -> CoupledT t d x y m  a
-liftCoupledT = undefined
+  lift = CoupledT . lift . lift
 
 runCoupledT :: Monad m => ComponentPath -> CoupledT t d x y m a -> m [Z t d x y]
 runCoupledT p (CoupledT m) = snd <$> runWriterT (evalStateT m (_CoupledState # p))
