@@ -9,6 +9,7 @@
 module Control.Pdevs.Coupled
     ( module Control.Pdevs.Coupled.Class
     , CoupledT, mkCoordinator
+    , RootCoordinator, mkRootCoordinator
     ) where
 
 import           Control.Lens.Getter
@@ -26,14 +27,14 @@ data CoupledState = CoupledState
     }
 makeClassy ''CoupledState
 
-_CoupledState :: Iso' CoupledState ComponentPath
-_CoupledState = iso (view coupledStatePath) (CoupledState 0)
-
 newtype CoupledT t (d :: [*]) x y m a =
   CoupledT (StateT CoupledState (WriterT [Z t d x y] m) a)
   deriving ( Functor, Applicative, Monad
            , MonadState CoupledState, MonadWriter [Z t d x y]
            )
+
+_CoupledState :: Iso' CoupledState ComponentPath
+_CoupledState = iso (view coupledStatePath) (CoupledState 0)
 
 instance (Monad m) => MonadCoupled (CoupledT t d x y m) t d x y where
   nextComponentPath = do
@@ -48,8 +49,22 @@ instance MonadTrans (CoupledT t d x y) where
 runCoupledT :: Monad m => ComponentPath -> CoupledT t d x y m a -> m [Z t d x y]
 runCoupledT p (CoupledT m) = snd <$> runWriterT (evalStateT m (_CoupledState # p))
 
+newtype RootCoordinator t x y =
+  RootCoordinator [Z t '[] x y]
+
+instance Show (RootCoordinator t x y) where
+  show (RootCoordinator zs) = "RootCoordinator " <> show zs
+
 mkCoordinator :: Monad m => CoupledT t (d' : d) x' y' m () -> CoupledT t d x y m (Component t d x' y')
 mkCoordinator m = do
   p <- nextComponentPath
   c <- lift $ runCoupledT p m
   return $ Coordinator p c
+
+mkRootCoordinator
+  :: Monad m
+  => CoupledT t '[] x y m (Component t '[] x y) -> m (RootCoordinator t x y)
+mkRootCoordinator m = fmap RootCoordinator . runCoupledT [] $ do
+  rc <- m
+  bindInput rc id
+  bindOutput rc id
