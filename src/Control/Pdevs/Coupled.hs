@@ -14,16 +14,20 @@ module Control.Pdevs.Coupled
 import           Control.Lens.Getter
 import           Control.Lens.Operators
 import           Control.Lens.TH
+import           Control.Lens.Iso
 import           Control.Monad.State
 import           Control.Monad.Writer
 import           Control.Pdevs.Component
 import           Control.Pdevs.Coupled.Class
 
 data CoupledState = CoupledState
-    { _coupledStatePath :: ComponentPath
-    , _coupledStateI    :: Int
+    { _coupledStateI    :: Int
+    , _coupledStatePath :: ComponentPath
     }
 makeClassy ''CoupledState
+
+_CoupledState :: Iso' CoupledState ComponentPath
+_CoupledState = iso (view coupledStatePath) (CoupledState 0)
 
 newtype CoupledT t (d :: [*]) x y m a =
   CoupledT (StateT CoupledState (WriterT [Z t d x y] m) a)
@@ -38,5 +42,14 @@ instance (Monad m) => MonadCoupled (CoupledT t d x y m) t d x y where
     (:) <$> pure i <*> use coupledStatePath
   addBinding = tell . pure
 
-mkCoordinator :: Monad m => CoupledT t (d':d) x' y' m () -> CoupledT t d x y m (Component t d x' y')
-mkCoordinator m = undefined
+liftCoupledT :: (Monad m) => m a -> CoupledT t d x y m  a
+liftCoupledT = undefined
+
+runCoupledT :: Monad m => ComponentPath -> CoupledT t d x y m a -> m [Z t d x y]
+runCoupledT p (CoupledT m) = snd <$> runWriterT (evalStateT m (_CoupledState # p))
+
+mkCoordinator :: Monad m => CoupledT t (d' : d) x' y' m () -> CoupledT t d x y m (Component t d x' y')
+mkCoordinator m = do
+  p <- nextComponentPath
+  xx <- liftCoupledT $ runCoupledT p m
+  return $ Coordinator p xx
